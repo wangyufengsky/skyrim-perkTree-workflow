@@ -77,6 +77,7 @@ if (!fs.existsSync(inputPath) || !fs.statSync(inputPath).isFile()) {
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const renderer = path.join(scriptDirectory, "skyrim-perk-tree-svg.mjs");
 const detailExtractor = path.join(scriptDirectory, "extract-perk-details.mjs");
+const labelRenderer = path.join(scriptDirectory, "render-perk-tree-labels.mjs");
 const validator = path.join(scriptDirectory, "validate-output.mjs");
 
 run(process.execPath, [renderer, inputPath, outputPath, ...args.masterRoots]);
@@ -104,8 +105,22 @@ if (args.language) {
 }
 run(process.execPath, detailArguments);
 
+run(process.execPath, [
+  labelRenderer,
+  "--details",
+  detailsPath,
+  "--svg-directory",
+  outputPath,
+  "--output",
+  outputPath,
+]);
+
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+const annotationManifestPath = path.join(outputPath, "perk-tree-svg-annotations.json");
+const annotationManifest = JSON.parse(fs.readFileSync(annotationManifestPath, "utf8"));
 manifest.details = detailsPath;
+manifest.annotatedOverview = annotationManifest.overview;
+manifest.annotationManifest = annotationManifestPath;
 fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
 const validatorArguments = [

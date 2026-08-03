@@ -56,6 +56,12 @@ if (!manifest.nodes || !fs.existsSync(manifest.nodes)) {
 if (!manifest.details || !fs.existsSync(manifest.details)) {
   fail(`perk detail export does not exist: ${manifest.details ?? "(missing path)"}`);
 }
+if (!manifest.annotatedOverview || !fs.existsSync(manifest.annotatedOverview)) {
+  fail(`name/level overview SVG does not exist: ${manifest.annotatedOverview ?? "(missing path)"}`);
+}
+if (!manifest.annotationManifest || !fs.existsSync(manifest.annotationManifest)) {
+  fail(`SVG annotation manifest does not exist: ${manifest.annotationManifest ?? "(missing path)"}`);
+}
 
 let visibleNodes = 0;
 let allConnections = 0;
@@ -92,6 +98,7 @@ if (failures.length > 0) {
 
 const nodeExport = JSON.parse(fs.readFileSync(manifest.nodes, "utf8"));
 const detailExport = JSON.parse(fs.readFileSync(manifest.details, "utf8"));
+const annotationExport = JSON.parse(fs.readFileSync(manifest.annotationManifest, "utf8"));
 if (nodeExport.schemaVersion !== 2 || detailExport.schemaVersion !== 2) {
   fail(`schema version mismatch: nodes=${nodeExport.schemaVersion}, details=${detailExport.schemaVersion}; expected 2`);
 }
@@ -116,6 +123,26 @@ if (detailedVisibleNodes.length !== visibleNodes) {
 }
 if (detailedVisibleNodes.some((node) => !node.perkResolution?.status)) {
   fail("one or more visible nodes have no perkResolution status");
+}
+if (annotationExport.sourceSha256 !== manifest.sourceSha256) {
+  fail("SVG annotation sourceSha256 does not match manifest");
+}
+if (annotationExport.perkDataLevelUsed !== false) {
+  fail("SVG annotations must not use PERK.DATA.level as the skill requirement");
+}
+if (annotationExport.visibleNodes !== visibleNodes || annotationExport.annotatedLegendRows !== visibleNodes || annotationExport.annotatedNodeTitles !== visibleNodes) {
+  fail(`SVG annotation count mismatch: visible=${annotationExport.visibleNodes}, legend=${annotationExport.annotatedLegendRows}, titles=${annotationExport.annotatedNodeTitles}, expected=${visibleNodes}`);
+}
+if (!Array.isArray(annotationExport.trees) || annotationExport.trees.length !== manifest.trees.length) {
+  fail(`SVG annotation tree count mismatch: expected ${manifest.trees.length}, got ${annotationExport.trees?.length ?? "null"}`);
+}
+for (const tree of annotationExport.trees) {
+  if (!tree.output || !fs.existsSync(tree.output)) {
+    fail(`${tree.editorId}: annotated SVG does not exist`);
+  }
+  if (tree.visibleNodes !== tree.annotatedLegendRows || tree.visibleNodes !== tree.annotatedNodeTitles) {
+    fail(`${tree.editorId}: incomplete name/level annotation coverage`);
+  }
 }
 
 const summary = {
@@ -143,7 +170,11 @@ const summary = {
   avifWinnersVerified: detailExport.summary?.avifWinnersVerified ?? 0,
   referencedRecords: detailExport.summary?.referencedRecords ?? 0,
   resolvedReferencedRecords: detailExport.summary?.resolvedReferencedRecords ?? 0,
-  unresolvedReferencedRecords: detailExport.summary?.unresolvedReferencedRecords ?? 0
+  unresolvedReferencedRecords: detailExport.summary?.unresolvedReferencedRecords ?? 0,
+  annotatedLegendRows: annotationExport.annotatedLegendRows ?? 0,
+  explicitSkillThresholds: annotationExport.explicitSkillThresholds ?? 0,
+  noExplicitSkillThresholds: annotationExport.noExplicitSkillThresholds ?? 0,
+  unresolvedSkillThresholds: annotationExport.unresolvedSkillThresholds ?? 0
 };
 
 console.log(JSON.stringify(summary, null, 2));

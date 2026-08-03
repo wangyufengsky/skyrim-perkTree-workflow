@@ -60,6 +60,15 @@ Master 缺失不否定目标插件内已有的几何，但名称、描述、条�
 
 ## 5. 文档产物
 
+只读工作流在 PERK 详情解析完成后，必须用详情回填逐树 SVG。每个可见节点在右侧
+索引中显示 INAM、PERK 名称、技能等级门槛、阶数、来源和逻辑坐标，并生成独立的
+`skill-trees-overview-names-levels.svg` 与 `perk-tree-svg-annotations.json`。
+
+技能等级门槛只能取自与当前技能树 Actor Value 匹配的 PERK 获取条件
+`GetBaseActorValue` CTDA。`PERK.DATA.level` 不是该门槛，不得用于图片等级标签。
+已解析 PERK 没有显式门槛时标 `Lv—`；PERK 或门槛证据未解析时标 `Lv?`。标注
+清单中的逐树 legend/title 数必须与详情汇总的 visibleNodes 完全相等，否则失败。
+
 用 `generate-skill-tree-manual.mjs` 从 `perk-tree-details.json` 生成 Markdown。
 每个可见节点至少列出：
 

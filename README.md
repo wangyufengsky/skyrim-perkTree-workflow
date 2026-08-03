@@ -1,7 +1,7 @@
 # Skyrim Perk Tree Workflow for Codex
 
 `skyrim-perk-tree-workflow` 是一个用于读取、比较、说明和安全编辑《上古卷轴 5》
-TES5/SSE 技能树的 Codex Skill。当前版本为 `0.5.0`。
+TES5/SSE 技能树的 Codex Skill。当前版本为 `0.6.0`。
 
 它把两类数据严格分开：
 
@@ -15,7 +15,7 @@ TES5/SSE 技能树的 Codex Skill。当前版本为 `0.5.0`。
 
 | 用途 | 适用场景 | 主要输入 | 主要产物 |
 |---|---|---|---|
-| 只读解析技能树 | 查看一个插件实际包含的技能树布局 | ESP/ESM/ESL | SVG、节点 JSON、详情 JSON、manifest |
+| 只读解析技能树 | 查看一个插件实际包含的技能树布局及每个节点的名称和等级 | ESP/ESM/ESL | 名称/等级 SVG、节点 JSON、详情 JSON、manifest |
 | 生成完整技能点说明 | 需要逐技能点查看名称、条件、效果和来源 | `perk-tree-details.json` | Markdown 手册 |
 | 校验树结构 | 排查重复索引、断线、环路、不可达节点 | 只读解析结果 | 结构校验结论 |
 | 证明 winning override | 确认某个 AVIF 在冻结 MO2 配置中的最终来源 | `plugins.txt`、路径映射、插件文件 | winner 证明 JSON |
@@ -179,8 +179,16 @@ node scripts/run-readonly-workflow.mjs \
 - `manifest.json`：源 SHA、master、树列表、结构校验和产物路径。
 - `perk-tree-nodes.json`：稳定 AVIF/PERK FormKey、INAM、坐标、FNAM、SNAM、CNAM。
 - `perk-tree-details.json`：PERK 文本、等级、CTDA、效果、引用记录和来源链。
-- `skill-trees-overview.svg`：全部技能树总览。
-- `<tree-edid>.svg`：每棵树的独立 SVG。
+- `skill-trees-overview.svg`：紧凑几何总览。
+- `skill-trees-overview-names-levels.svg`：可独立打开的名称/等级完整总览。
+- `<tree-edid>.svg`：每棵树的独立 SVG；每个可见节点按 INAM 列出名称、技能等级、阶数、来源和逻辑坐标。
+- `perk-tree-svg-annotations.json`：逐树名称/等级标注覆盖率、门槛解析状态和 SVG SHA。
+
+图片中的 `Lv30+` 等标签来自该 PERK 获取条件里与当前技能树匹配的
+`GetBaseActorValue >= 30` CTDA。工作流不会使用通常为 0 的 `PERK.DATA.level`
+冒充技能等级门槛。已解析 PERK 没有显式技能门槛时显示 `Lv—`；PERK 或门槛
+证据未解析时显示 `Lv?`。`validate-output.mjs` 要求 legend 和悬浮 title 对全部
+visible nodes 闭合，漏一个节点即失败。
 
 `perk-tree-details.json` 中的重要状态：
 
@@ -438,6 +446,7 @@ node scripts/verify-change-set-reparse.mjs \
 ```bash
 node scripts/test-change-set-reparse.mjs
 node scripts/test-merge-workflow.mjs
+node scripts/test-perk-tree-labels.mjs
 ```
 
 构建固定依赖的 Mutagen writer：
