@@ -59,7 +59,11 @@ internal static class WriterApplication
 
             var edited = target.DeepCopy();
             ValidateTreeBeforeEdit(edited);
-            var applied = ApplyOperations(edited, changeSet.Operations);
+            var permittedPerkPlugins = source.ModHeader.MasterReferences
+                .Select(master => master.Master)
+                .Append(baseModKey)
+                .ToHashSet();
+            var applied = ApplyOperations(edited, changeSet.Operations, permittedPerkPlugins);
             ValidateTreeAfterEdit(edited);
 
             var outputModKey = ModKey.FromNameAndExtension(Path.GetFileName(options.OutputPluginPath));
@@ -245,7 +249,10 @@ internal static class WriterApplication
             throw new InvalidDataException($"{label} contains nodes unreachable from INAM 0: {string.Join(", ", unreachable)}.");
     }
 
-    private static List<string> ApplyOperations(ActorValueInformation tree, IReadOnlyList<ChangeOperation> operations)
+    private static List<string> ApplyOperations(
+        ActorValueInformation tree,
+        IReadOnlyList<ChangeOperation> operations,
+        IReadOnlySet<ModKey> permittedPerkPlugins)
     {
         var applied = new List<string>();
         foreach (var operation in operations)
@@ -302,6 +309,34 @@ internal static class WriterApplication
                         while (candidate.ConnectionLineToIndices.Remove(targetIndex)) { }
                     }
                     applied.Add($"removeNode:{operation.NodeIndex}");
+                    break;
+                }
+                case "addNode":
+                {
+                    if (operation.NodeIndex == 0) throw new InvalidDataException("addNode cannot use the invisible root index 0.");
+                    var nodeIndex = checked((uint)operation.NodeIndex!.Value);
+                    if (byIndex.ContainsKey(nodeIndex)) throw new InvalidDataException($"addNode index {operation.NodeIndex} already exists.");
+                    var perkFormKey = ParseWorkflowFormKey(operation.PerkFormKey!);
+                    if (!permittedPerkPlugins.Contains(perkFormKey.ModKey))
+                    {
+                        throw new InvalidDataException(
+                            $"addNode PERK {operation.PerkFormKey} is not from the verified base plugin or one of its masters. " +
+                            "Choose a verified base that declares this plugin as a master; the writer will not silently add a new dependency.");
+                    }
+                    var template = tree.PerkTree.FirstOrDefault()
+                                   ?? throw new InvalidDataException("addNode needs an existing invisible root to copy the associated skill.");
+                    tree.PerkTree.Add(new ActorValuePerkNode
+                    {
+                        Perk = new FormLink<IPerkGetter>(perkFormKey),
+                        FNAM = new byte[] { operation.Required!.Value ? (byte)1 : (byte)0, 0, 0, 0 },
+                        PerkGridX = checked((uint)operation.Xnam!.Value),
+                        PerkGridY = checked((uint)operation.Ynam!.Value),
+                        HorizontalPosition = operation.Hnam!.Value,
+                        VerticalPosition = operation.Vnam!.Value,
+                        AssociatedSkill = template.AssociatedSkill,
+                        Index = nodeIndex
+                    });
+                    applied.Add($"addNode:{operation.NodeIndex}:{operation.PerkFormKey}");
                     break;
                 }
                 default:
@@ -367,7 +402,7 @@ internal static class WriterApplication
         return left.Value.Span.SequenceEqual(right.Value.Span);
     }
 
-    private static FormKey ParseWorkflowFormKey(string value)
+    internal static FormKey ParseWorkflowFormKey(string value)
     {
         var separator = value.LastIndexOf('|');
         if (separator <= 0 || separator == value.Length - 1)
@@ -453,7 +488,8 @@ internal sealed record ChangeOperation(
     float? Vnam,
     int? FromIndex,
     int? ToIndex,
-    bool? Required)
+    bool? Required,
+    string? PerkFormKey)
 {
     public void Validate()
     {
@@ -490,6 +526,18 @@ internal sealed record ChangeOperation(
                 ValidateNodeIndex(NodeIndex, "nodeIndex");
                 if (Xnam.HasValue || Ynam.HasValue || Hnam.HasValue || Vnam.HasValue || FromIndex.HasValue || ToIndex.HasValue || Required.HasValue)
                     throw new InvalidDataException("removeNode contains fields belonging to another operation.");
+                break;
+            case "addNode":
+                ValidateNodeIndex(NodeIndex, "nodeIndex");
+                if (NodeIndex == 0) throw new InvalidDataException("addNode cannot use nodeIndex 0.");
+                if (string.IsNullOrWhiteSpace(PerkFormKey)) throw new InvalidDataException("addNode requires perkFormKey.");
+                _ = WriterApplication.ParseWorkflowFormKey(PerkFormKey);
+                if (!Required.HasValue || Xnam is null or < 0 or > uint.MaxValue || Ynam is null or < 0 or > uint.MaxValue || Hnam is null || Vnam is null)
+                    throw new InvalidDataException("addNode requires required, uint xnam/ynam, and finite hnam/vnam.");
+                if (!float.IsFinite(Hnam.Value) || !float.IsFinite(Vnam.Value))
+                    throw new InvalidDataException("addNode hnam/vnam must be finite.");
+                if (FromIndex.HasValue || ToIndex.HasValue)
+                    throw new InvalidDataException("addNode contains fields belonging to another operation.");
                 break;
             default:
                 throw new InvalidDataException($"Unsupported operation {Op}.");

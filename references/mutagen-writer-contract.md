@@ -26,11 +26,15 @@ writer 只为一个已批准的 AVIF change-set 创建新补丁 ESP。它不修�
 1. 以 Mutagen binary overlay 只读打开基线。
 2. 找到 target AVIF，拒绝重复 INAM。
 3. 通过 Mutagen `DeepCopy()` 创建 AVIF override。
-4. 只允许：移动节点、增删有向连接、修改 Parent Required、删除节点。
-5. 所有引用节点必须存在；connect 不得重复；disconnect 必须原本存在。
-6. 删除节点时同步移除指向它的 CNAM；结果不得有悬空连接。
-7. 新插件只加入这一条 AVIF override。
-8. 由 Mutagen 写临时同名 `.esp`，绝不写源路径或已有输出。
+4. 只允许：移动节点、增删有向连接、修改 Parent Required、删除节点，或新增一个
+   显式给出 stable PERK FormKey 的节点。
+5. 新节点的 PERK 必须来自已验证 base plugin 或它已经声明的 master；writer 不会
+   静默添加依赖。新增节点继承该 AVIF 现有节点的 Associated Skill，所有 CNAM 必须
+   由后续明确 `connect` 操作给出。
+6. 所有引用节点必须存在；connect 不得重复；disconnect 必须原本存在。
+7. 删除节点时同步移除指向它的 CNAM；结果不得有悬空连接。
+8. 新插件只加入这一条 AVIF override。
+9. 由 Mutagen 写临时同名 `.esp`，绝不写源路径或已有输出。
 
 ## 写后提交门
 

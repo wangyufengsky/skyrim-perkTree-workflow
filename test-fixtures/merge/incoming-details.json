@@ -1,0 +1,17 @@
+{
+  "source": "/fixtures/Incoming.esp",
+  "sourceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "resolution": { "mode": "explicit-load-order-complete" },
+  "trees": [
+    {
+      "editorId": "AVOneHanded",
+      "displayName": "单手",
+      "nodes": [
+        { "index": 0, "invisibleRoot": true, "connections": [1] },
+        { "index": 1, "perkFormKey": "Base.esp|00000001", "perkEditorId": "BaseSlash", "parentRequired": true, "incomingConnections": [0], "connections": [], "logicalX": 0, "logicalY": 0, "gridX": 0, "gridY": 0, "horizontalOffset": 0, "verticalOffset": 0, "perkResolution": { "status": "winning-override-from-complete-load-order", "winningOverrideVerified": true, "perk": { "editorId": "BaseSlash", "name": { "value": "基础斩击" }, "description": { "value": "造成伤害" }, "data": { "level": 0, "numRanks": 1 }, "acquisitionConditions": [], "effects": [], "unresolved": [] } } },
+        { "index": 2, "perkFormKey": "Incoming.esp|00000002", "perkEditorId": "UniqueCombo", "parentRequired": true, "incomingConnections": [0], "connections": [], "logicalX": 2, "logicalY": 1, "gridX": 2, "gridY": 1, "horizontalOffset": 0, "verticalOffset": 0, "perkResolution": { "status": "winning-override-from-complete-load-order", "winningOverrideVerified": true, "perk": { "editorId": "UniqueCombo", "name": { "value": "独有连击" }, "description": { "value": "独有的攻击效果" }, "data": { "level": 20, "numRanks": 1 }, "acquisitionConditions": [], "effects": [], "unresolved": [] } } },
+        { "index": 3, "perkFormKey": "Incoming.esp|00000003", "perkEditorId": "BaseGuard", "parentRequired": true, "incomingConnections": [0], "connections": [], "logicalX": 3, "logicalY": 1, "gridX": 3, "gridY": 1, "horizontalOffset": 0, "verticalOffset": 0, "perkResolution": { "status": "winning-override-from-complete-load-order", "winningOverrideVerified": true, "perk": { "editorId": "BaseGuard", "name": { "value": "基础格挡" }, "description": { "value": "效果不同" }, "data": { "level": 10, "numRanks": 1 }, "acquisitionConditions": [], "effects": [], "unresolved": [] } } }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: skyrim-perk-tree-workflow
-description: Parse, validate, render, document, and safely edit Skyrim TES5/SSE perk trees stored in ESP/ESM AVIF records with a cross-platform Mutagen writer. Use for perk-tree shape, coordinates, connections, PERK requirements/effects, SVG previews, Markdown manuals, or new patch ESPs.
+description: Parse, compare, render, document, and safely merge or edit Skyrim TES5/SSE perk trees stored in ESP/ESM AVIF records with a cross-platform Mutagen writer. Use for perk-tree shape, two-mod merge review, duplicate/conflict analysis, SVG previews, Markdown manuals, or new patch ESPs.
 allowed-tools:
   - Read
   - Write
@@ -30,9 +30,15 @@ editing. Read `references/workflow.md` before acting. For edits, also read
    winning-override proof.
 8. Write only a new `.esp` through the bundled Mutagen project. Do not implement
    or invoke a custom Bethesda binary serializer.
-9. Require the exact base SHA-256, an approved change-set, Mutagen reopen
+9. A two-mod merge always has two explicit user gates: approve the read-only
+   merge assessment before a change-set is made, then approve the written patch's
+   reparse/SVG/manual before any final runtime claim.
+10. Do not classify equal display names, EDIDs, coordinates, or partial effects
+   as duplicates. Only equal stable PERK FormKeys are certain duplicates; all
+   other semantic matches remain user-review items.
+11. Require the exact base SHA-256, an approved change-set, Mutagen reopen
    verification, and the independent Node reparse before calling a patch built.
-10. xEdit `Check for Errors` and an in-game capture remain later validation
+12. xEdit `Check for Errors` and an in-game capture remain later validation
     stages; they are not proof supplied by the writer.
 
 ## AVIF fields
@@ -71,6 +77,48 @@ node scripts/generate-skill-tree-manual.mjs \
 
 The generator must document every visible node and fail if its count differs
 from the detail export summary.
+
+## Two-mod merge workflow
+
+Never start by writing a patch. First run the complete read-only workflow once
+for each candidate plugin, including the same frozen `plugins.txt`,
+`plugin-path-map.json`, master roots, and language. Generate a full manual for
+each input, then compare the two detail exports:
+
+```bash
+node scripts/analyze-perk-tree-merge.mjs \
+  --base-details "/absolute/path/to/base-analysis/perk-tree-details.json" \
+  --incoming-details "/absolute/path/to/incoming-analysis/perk-tree-details.json" \
+  --output "/absolute/path/to/merge-review"
+```
+
+Deliver `perk-tree-merge-analysis.svg`, `.md`, and `.json` to the user. The
+analysis calls out exact FormKey duplicates (do not import), evidence-identical
+but different FormKey candidates (review), EDID/name conflicts (manual), unique
+import candidates, and unresolved records (never import). A tree that has no
+matching base AVIF is `target-tree-unmatched`; it is not automatically spliced
+into another tree.
+
+Wait for the user's item-by-item confirmation or requested modifications. Bind
+the approved choices to the exact report hash with `merge-decision.json`, then
+validate it before producing a change-set:
+
+```bash
+node scripts/validate-merge-decision.mjs \
+  --analysis "/absolute/path/to/merge-review/perk-tree-merge-analysis.json" \
+  --decision "/absolute/path/to/merge-decision.json"
+```
+
+Do not write if the decision is incomplete, contains a `manual` item, or names
+a different report hash. Generate an exact, new-output-only change-set only
+after that approval. Each imported node must be an explicit `addNode` operation
+with its stable `perkFormKey`, coordinates, Parent Required value, and explicit
+`connect` operations. Its PERK must be from the verified base plugin or one of
+its existing masters; the writer refuses to add a hidden dependency. After the
+Mutagen workflow completes, run the read-only
+workflow and manual generator on the patch, render the affected trees, deliver
+the post-merge SVG/manual/diff, and wait again for the user's final confirmation.
+No final confirmation is an in-game verification claim.
 
 ## Editing with Mutagen
 
