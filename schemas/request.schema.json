@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/skyrim-perk-tree-workflow/request.schema.json",
+  "title": "Skyrim Perk Tree Workflow Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "inputEsp",
+    "outputDirectory",
+    "intent",
+    "sourceReadOnly"
+  ],
+  "properties": {
+    "inputEsp": {
+      "type": "string",
+      "minLength": 1
+    },
+    "outputDirectory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "masterSearchRoots": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "pluginPathMap": {
+      "type": "string",
+      "minLength": 1
+    },
+    "loadOrder": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "minLength": 1,
+      "default": "English"
+    },
+    "expectedSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "targetTrees": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "intent": {
+      "enum": [
+        "analyze",
+        "render",
+        "propose-edit",
+        "validate-patch"
+      ]
+    },
+    "sourceReadOnly": {
+      "const": true
+    }
+  }
+}

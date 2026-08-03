@@ -1,0 +1,16 @@
+{
+  "inputEsp": "/mods/My Perk Mod/MyPerkMod.esp",
+  "outputDirectory": "/work/perk-tree-output",
+  "masterSearchRoots": [
+    "/mods"
+  ],
+  "pluginPathMap": "/work/plugin-path-map.json",
+  "loadOrder": "/profiles/My Profile/plugins.txt",
+  "language": "English",
+  "expectedSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "targetTrees": [
+    "AVOneHanded"
+  ],
+  "intent": "render",
+  "sourceReadOnly": true
+}

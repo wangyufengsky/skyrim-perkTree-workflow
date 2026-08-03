@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/skyrim-perk-tree-workflow/plugin-path-map.schema.json",
+  "title": "MO2 Virtual Plugin Path Map",
+  "type": "object",
+  "propertyNames": {
+    "pattern": "^.+\\.(esm|esp|esl)$"
+  },
+  "additionalProperties": {
+    "type": "string",
+    "minLength": 1
+  }
+}

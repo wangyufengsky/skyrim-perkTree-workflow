@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "basePlugin": "MyPerkMod.esp",
+  "baseSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "expectedWinnerPlugin": "MyPerkMod.esp",
+  "targetAvif": "Skyrim.esm|0000044C",
+  "outputPlugin": "MyPerkTreePatch.esp",
+  "reason": "Move one node and replace one outgoing connection after SVG review.",
+  "operations": [
+    {
+      "op": "moveNode",
+      "nodeIndex": 12,
+      "xnam": 3,
+      "ynam": 5,
+      "hnam": 0.5,
+      "vnam": 0
+    },
+    {
+      "op": "disconnect",
+      "fromIndex": 12,
+      "toIndex": 15
+    },
+    {
+      "op": "connect",
+      "fromIndex": 12,
+      "toIndex": 16
+    }
+  ]
+}

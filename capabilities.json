@@ -1,0 +1,38 @@
+{
+  "package": "skyrim-perk-tree-workflow",
+  "version": "0.3.0",
+  "runtime": {
+    "node": ">=18",
+    "dotnetForWriting": ">=9.0",
+    "mutagenBethesdaSkyrim": "0.54.2"
+  },
+  "implemented": [
+    "read-only TES4/GRUP/AVIF/PERK parsing",
+    "compressed record inflation",
+    "AVIF node, coordinate, parent flag, and connection extraction",
+    "PERK names, descriptions, ranks, next-perk, CTDA, effects, and referenced records",
+    "localized STRINGS, DLSTRINGS, and ILSTRINGS lookup",
+    "explicit plugins.txt and plugin-path-map winner analysis",
+    "SVG overview and per-tree rendering",
+    "complete per-visible-node Markdown manual generation",
+    "cross-platform Mutagen AVIF patch writing",
+    "new-output-only and source SHA-256 safety gates",
+    "Mutagen reopen structural comparison",
+    "independent post-write Node reparse and graph validation",
+    "locked NuGet dependency graph"
+  ],
+  "externalRequired": [
+    "final MO2 load-order winner confirmation",
+    "optional xEdit Check for Errors",
+    "Skyrim runtime screenshot validation",
+    "full VMAD/Papyrus semantic decompilation",
+    "complete semantic mapping for unrecognized CTDA IDs"
+  ],
+  "safety": {
+    "sourcePluginsAreReadOnly": true,
+    "inPlacePluginWriting": false,
+    "customEspBinarySerializer": false,
+    "writerLibrary": "Mutagen.Bethesda.Skyrim",
+    "failsClosedOnHashOrVerificationMismatch": true
+  }
+}

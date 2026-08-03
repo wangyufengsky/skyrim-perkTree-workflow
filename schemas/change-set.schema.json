@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/skyrim-perk-tree-workflow/change-set.schema.json",
+  "title": "Skyrim Perk Tree Change Set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "basePlugin",
+    "baseSha256",
+    "expectedWinnerPlugin",
+    "targetAvif",
+    "outputPlugin",
+    "operations"
+  ],
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "basePlugin": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "expectedWinnerPlugin": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetAvif": {
+      "$ref": "#/$defs/formKey"
+    },
+    "outputPlugin": {
+      "type": "string",
+      "pattern": "^[^/\\\\]+\\.esp$"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/moveNode"
+          },
+          {
+            "$ref": "#/$defs/connect"
+          },
+          {
+            "$ref": "#/$defs/disconnect"
+          },
+          {
+            "$ref": "#/$defs/updateParentRequired"
+          },
+          {
+            "$ref": "#/$defs/removeNode"
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "formKey": {
+      "type": "string",
+      "pattern": "^.+\\|[0-9A-Fa-f]{8}$"
+    },
+    "nodeIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "moveNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "nodeIndex",
+        "xnam",
+        "ynam",
+        "hnam",
+        "vnam"
+      ],
+      "properties": {
+        "op": {
+          "const": "moveNode"
+        },
+        "nodeIndex": {
+          "$ref": "#/$defs/nodeIndex"
+        },
+        "xnam": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "ynam": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "hnam": {
+          "type": "number"
+        },
+        "vnam": {
+          "type": "number"
+        }
+      }
+    },
+    "connect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "fromIndex",
+        "toIndex"
+      ],
+      "properties": {
+        "op": {
+          "const": "connect"
+        },
+        "fromIndex": {
+          "$ref": "#/$defs/nodeIndex"
+        },
+        "toIndex": {
+          "$ref": "#/$defs/nodeIndex"
+        }
+      }
+    },
+    "disconnect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "fromIndex",
+        "toIndex"
+      ],
+      "properties": {
+        "op": {
+          "const": "disconnect"
+        },
+        "fromIndex": {
+          "$ref": "#/$defs/nodeIndex"
+        },
+        "toIndex": {
+          "$ref": "#/$defs/nodeIndex"
+        }
+      }
+    },
+    "updateParentRequired": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "nodeIndex",
+        "required"
+      ],
+      "properties": {
+        "op": {
+          "const": "updateParentRequired"
+        },
+        "nodeIndex": {
+          "$ref": "#/$defs/nodeIndex"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "removeNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "nodeIndex"
+      ],
+      "properties": {
+        "op": {
+          "const": "removeNode"
+        },
+        "nodeIndex": {
+          "$ref": "#/$defs/nodeIndex"
+        }
+      }
+    }
+  }
+}

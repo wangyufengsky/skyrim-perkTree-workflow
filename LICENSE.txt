@@ -1,0 +1,10 @@
+SPDX-License-Identifier: GPL-3.0-only
+
+Copyright (c) 2026.
+
+This workflow package is distributed under the GNU General Public License
+version 3 only. A copy of the license is available at:
+https://www.gnu.org/licenses/gpl-3.0.txt
+
+This package is provided without warranty. Skyrim, Creation Kit, Mod Organizer,
+Mutagen, and xEdit/SSEEdit are trademarks or projects of their respective owners.

@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/skyrim-perk-tree-workflow/perk-tree-details.schema.json",
+  "title": "Skyrim Perk Tree Details",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "source",
+    "sourceSha256",
+    "resolution",
+    "summary",
+    "trees",
+    "referencedRecords"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "sourceSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "resolution": {
+      "type": "object",
+      "required": [
+        "mode",
+        "winningOverrideVerified",
+        "pluginFailures"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "origin-only",
+            "explicit-load-order-complete",
+            "explicit-load-order-incomplete"
+          ]
+        },
+        "winningOverrideVerified": {
+          "type": "boolean"
+        },
+        "pluginFailures": {
+          "type": "array"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "trees",
+        "visibleNodes",
+        "resolvedPerks",
+        "unresolvedPerks",
+        "acquisitionConditions",
+        "effectConditions",
+        "effects"
+      ]
+    },
+    "trees": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "editorId",
+          "nodes",
+          "validation"
+        ],
+        "properties": {
+          "editorId": {
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "index",
+                "invisibleRoot",
+                "perkFormKey",
+                "parentRequired",
+                "connections",
+                "incomingConnections",
+                "perkResolution"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "invisibleRoot": {
+                  "type": "boolean"
+                },
+                "perkFormKey": {
+                  "type": "string"
+                },
+                "parentRequired": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "connections": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                "incomingConnections": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                "perkResolution": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "winningOverrideVerified",
+                    "overrideChain",
+                    "perk"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "referencedRecords": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "status",
+          "winningOverrideVerified",
+          "overrideChain",
+          "record"
+        ]
+      }
+    }
+  }
+}

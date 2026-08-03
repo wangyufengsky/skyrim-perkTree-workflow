@@ -1,0 +1,5 @@
+# Example only. Export/copy the active profile's real plugins.txt.
+*Skyrim.esm
+*Update.esm
+*Vokrii - Minimalistic Perks of Skyrim.esp
+*MyPerkMod.esp
