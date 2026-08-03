@@ -1,6 +1,6 @@
 {
   "package": "skyrim-perk-tree-workflow",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "runtime": {
     "node": ">=18",
     "dotnetForWriting": ">=9.0",
@@ -15,7 +15,8 @@
     "localized STRINGS, DLSTRINGS, and ILSTRINGS lookup",
     "explicit plugins.txt and plugin-path-map winner analysis with frozen-context fingerprints",
     "pre-write target AVIF override-chain and physical winner proof",
-    "SVG overview and per-tree rendering",
+    "SVG overview and per-tree rendering with PERK names, CTDA skill-level gates, ranks, sources, and coordinates",
+    "standalone combined name-and-level SVG overview with annotation coverage manifest",
     "complete per-visible-node Markdown manual generation",
     "two-plugin AVIF/PERK merge assessment with SVG and Markdown evidence",
     "stable-FormKey duplicate, evidence-equivalence, semantic-conflict, and unresolved-item classification",

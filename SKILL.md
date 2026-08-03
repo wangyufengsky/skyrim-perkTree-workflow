@@ -64,7 +64,13 @@ node scripts/run-readonly-workflow.mjs \
 ```
 
 Inspect `manifest.json`, `perk-tree-nodes.json`, `perk-tree-details.json`, the
-overview SVG, and every tree SVG. Report geometry errors separately from missing
+compact overview SVG, the combined name/level overview SVG, the annotation
+manifest, and every tree SVG. Every visible node in a per-tree SVG must show its
+resolved PERK name, skill-level acquisition gate, rank count, source, and logical
+coordinates. Derive the skill-level gate from the matching-tree
+`GetBaseActorValue` acquisition CTDA; never use `PERK.DATA.level` as that gate.
+Use `Lv—` when a resolved PERK has no explicit matching skill threshold and
+`Lv?` when the level evidence is unresolved. Report geometry errors separately from missing
 PERKs, strings, referenced records, VMAD, and unmapped CTDA functions.
 Every tree must carry a stable AVIF FormKey. Source-plugin self slots resolve to
 the source filename; an unresolved AVIF record slot is a validation failure.
