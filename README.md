@@ -22,19 +22,6 @@
 
 只进行技能树读取、SVG、JSON 和 Markdown 生成时不需要安装 npm 依赖。
 
-### macOS：安装 .NET 9
-
-Homebrew 的 `dotnet@9` 是 keg-only。安装后将其链接到 Homebrew 的公共命令路径：
-
-```bash
-brew install dotnet@9
-brew link --force dotnet@9
-dotnet --version
-```
-
-项目锁定到 .NET 9 与 `Mutagen.Bethesda.Skyrim` 0.54.2；不要用未锁定的依赖恢复
-代替下方的开发验证。
-
 ## 安装方式
 
 ### 1. 获取项目
@@ -92,57 +79,3 @@ powershell -ExecutionPolicy Bypass -File ".\scripts\install.ps1" `
 ```text
 $skyrim-perk-tree-workflow 解析这个 ESP 的技能树并生成 SVG 和完整技能点说明
 ```
-
-## 两个 Mod 技能树合并
-
-先对两个 ESP 分别运行只读工作流，且使用同一个冻结的 MO2 profile、`plugins.txt`
-和 `plugin-path-map.json`。然后生成合并评审，不会写入任何 ESP：
-
-```bash
-node scripts/analyze-perk-tree-merge.mjs \
-  --base-details "/analysis/base/perk-tree-details.json" \
-  --incoming-details "/analysis/incoming/perk-tree-details.json" \
-  --output "/analysis/merge-review"
-```
-
-将 `perk-tree-merge-analysis.svg` 和 `.md` 交给用户。只有用户逐项确认后，才用
-下列命令校验已批准的 `merge-decision.json`，再生成 change-set 和新补丁：
-
-```bash
-node scripts/validate-merge-decision.mjs \
-  --analysis "/analysis/merge-review/perk-tree-merge-analysis.json" \
-  --decision "/analysis/merge-decision.json"
-```
-
-写后必须对输出补丁重新运行只读工作流、出图和生成完整说明；这些写后产物仍须等
-用户最终确认。详情见 `references/workflow.md`。
-
-对于确认导入的独有节点，change-set 使用 `addNode` 加入稳定 PERK FormKey、坐标
-和 Parent Required，再以显式 `connect` 重建获批准的连接。该 PERK 必须来自基树
-插件或它已有的 master；工具不会暗中添加新的主文件依赖。
-
-## 开发验证
-
-先恢复锁定的 NuGet 依赖，再构建 writer：
-
-```bash
-dotnet restore writer/SkyrimPerkTreeWriter/SkyrimPerkTreeWriter.csproj --locked-mode
-dotnet build writer/SkyrimPerkTreeWriter/SkyrimPerkTreeWriter.csproj --configuration Release --no-restore
-```
-
-以下合成测试验证双树分类、用户决策完整性，以及错误的分析 SHA 会被拒绝：
-
-```bash
-node scripts/test-merge-workflow.mjs
-```
-
-在具备已验证基线 ESP 的机器上，运行隔离的 `addNode` 烟测。它只在临时目录创建
-补丁，并验证 Mutagen reopen 与独立 Node 回读；不会修改基线文件：
-
-```bash
-node scripts/test-mutagen-add-node.mjs \
-  --base "/absolute/path/to/verified-winner.esp"
-```
-
-该烟测证明 L3 写回与 L4 独立回读，不替代最终 MO2 load order、SSEEdit 或游戏内
-验证。
