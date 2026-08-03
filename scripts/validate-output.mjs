@@ -69,6 +69,9 @@ for (const tree of manifest.trees) {
   if (!tree.svg || !fs.existsSync(tree.svg)) {
     failures.push(`${tree.editorId}: SVG does not exist`);
   }
+  if (!/^.+\|[0-9A-Fa-f]{8}$/.test(tree.formKey ?? "") || tree.unresolvedFormIdSlot) {
+    failures.push(`${tree.editorId}: stable AVIF FormKey is missing or unresolved (${tree.formKey ?? "null"})`);
+  }
   const validation = tree.validation ?? {};
   if (validation.rootCount !== 1) {
     failures.push(`${tree.editorId}: rootCount=${validation.rootCount}`);
@@ -89,6 +92,9 @@ if (failures.length > 0) {
 
 const nodeExport = JSON.parse(fs.readFileSync(manifest.nodes, "utf8"));
 const detailExport = JSON.parse(fs.readFileSync(manifest.details, "utf8"));
+if (nodeExport.schemaVersion !== 2 || detailExport.schemaVersion !== 2) {
+  fail(`schema version mismatch: nodes=${nodeExport.schemaVersion}, details=${detailExport.schemaVersion}; expected 2`);
+}
 const exportedVisibleNodes = nodeExport.trees
   .flatMap((tree) => tree.nodes)
   .filter((node) => !node.invisibleRoot);
@@ -122,6 +128,8 @@ const summary = {
   visibleConnections,
   structuralErrors: 0,
   perkResolutionMode: detailExport.resolution?.mode ?? null,
+  frozenContextSha256: detailExport.resolution?.frozenContextSha256 ?? null,
+  sourceAvifWinnerVerified: detailExport.resolution?.winningOverrideVerified ?? false,
   resolvedPerks: detailExport.summary?.resolvedPerks ?? 0,
   unresolvedPerks: detailExport.summary?.unresolvedPerks ?? visibleNodes,
   namedPerks: detailExport.summary?.namedPerks ?? 0,
@@ -132,6 +140,7 @@ const summary = {
   unmappedConditions: detailExport.summary?.unmappedConditions ?? 0,
   effects: detailExport.summary?.effects ?? 0,
   winningOverridesVerified: detailExport.summary?.winningOverridesVerified ?? 0,
+  avifWinnersVerified: detailExport.summary?.avifWinnersVerified ?? 0,
   referencedRecords: detailExport.summary?.referencedRecords ?? 0,
   resolvedReferencedRecords: detailExport.summary?.resolvedReferencedRecords ?? 0,
   unresolvedReferencedRecords: detailExport.summary?.unresolvedReferencedRecords ?? 0

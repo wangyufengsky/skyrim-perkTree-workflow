@@ -1,10 +1,12 @@
 {
+  "schemaVersion": 2,
   "source": "/fixtures/Incoming.esp",
   "sourceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-  "resolution": { "mode": "explicit-load-order-complete" },
+  "resolution": { "mode": "explicit-load-order-complete", "winningOverrideVerified": false, "perkWinningOverridesVerified": true, "pluginFailures": [], "loadOrderSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "pluginMapSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "language": "English", "frozenContext": { "loadOrderSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "pluginMapSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "pluginRoots": ["/fixtures/mods"], "language": "English", "resolvedPlugins": [] }, "frozenContextSha256": "75d920d5eb2ba8d401ecdb421cb367920e0a1b493614619029ef76e68c3d14d1" },
   "trees": [
     {
       "editorId": "AVOneHanded",
+      "formKey": "Skyrim.esm|0000044C",
       "displayName": "单手",
       "nodes": [
         { "index": 0, "invisibleRoot": true, "connections": [1] },

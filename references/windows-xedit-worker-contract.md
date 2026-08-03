@@ -1,6 +1,6 @@
 # Windows / xEdit 可选验证契约（已被 Mutagen writer 取代）
 
-> v0.4.0 起，本文件不再定义主要写入路径。跨平台写入必须使用
+> v0.5.0 起，本文件不再定义主要写入路径。跨平台写入必须使用
 > `mutagen-writer-contract.md`。本页仅保留给选择 SSEEdit `Check for Errors`
 > 的后续验证；不能把 xEdit 缺失当作 Mutagen 创建补丁的阻塞条件。
 

@@ -46,8 +46,11 @@ CREATED -> PROFILE_FROZEN -> WINNERS_RESOLVED -> TWO_BASELINES_PARSED
 3. 对 MO2 同名文件使用 plugin-path-map；不同 SHA 时禁止按目录猜 winner。
 4. 确认目标 AVIF 的 winning plugin。
 5. 运行 `run-readonly-workflow.mjs`。
-6. 检查单根、重复 INAM、悬空 CNAM、自环、环路和不可达节点。
-7. 逐节点检查 `perkResolution`：`origin-record-only`、
+6. 检查每棵树的 stable AVIF FormKey；插件自身槽位必须解析为源插件文件名。
+7. 保存由 load order、plugin map、语言、master roots、全部活动插件物理路径和
+   SHA-256 计算的 `frozenContextSha256`。
+8. 检查单根、重复 INAM、悬空 CNAM、自环、环路和不可达节点。
+9. 逐节点检查 `perkResolution`：`origin-record-only`、
    `winning-override-from-complete-load-order`、
    `best-known-record-from-incomplete-load-order`、`unresolved` 或
    `invisible-root`。
@@ -76,6 +79,8 @@ SVG、每树 SVG、`perk-tree-details.json` 和完整说明。
 
 随后执行 `analyze-perk-tree-merge.mjs`。它产生合并评审 SVG、Markdown 和 JSON：
 
+- 两侧必须是 schema v2、具有可重算且相同的 `frozenContextSha256`；
+- AVIF 只按 stable FormKey 配对，EDID 和显示名不作为树身份；
 - 同一稳定 `PERK FormKey` 是 `exact-duplicate`：默认保留基树，禁止重复导入；
 - FormKey 不同但所有已解析 PERK 证据指纹相同是 `equivalent-review`：仍由用户决定；
 - 同 EDID/名称而证据不同是 `semantic-conflict`：只能手工决定，禁止自动覆盖；
@@ -83,9 +88,11 @@ SVG、每树 SVG、`perk-tree-details.json` 和完整说明。
 - 任一侧 winner 未验证、PERK 未解析或跨 AVIF 未指定目标，保持未决，禁止写入。
 
 先交付图和完整逐项分析，等待用户确认或修改。将用户确认保存为
-`merge-decision.json`，它必须列出每一个待并入节点，并绑定分析 JSON 中的
+schema v2 `merge-decision.json`，它必须用 `treeFormKey + incomingIndex` 列出每
+一个待并入节点，并绑定分析 JSON 中的
 `analysisSha256`。`validate-merge-decision.mjs` 必须通过；`manual`、遗漏、重复
-决策或 SHA 不符均失败关闭。
+决策、报告内容重算 SHA 不符均失败关闭。`exact-duplicate`、`semantic-conflict`、
+`unresolved-*` 和 `target-tree-unmatched` 不允许直接选择 `import`。
 
 ## 7. 提案与合并写入
 
@@ -113,14 +120,16 @@ AVIF 时跨树合并。
 
 严格遵循 `mutagen-writer-contract.md`：
 
-1. 用 `SkyrimMod.CreateFromBinaryOverlay` 只读打开已验证 winner。
-2. 校验 SHA、文件名、target AVIF 和节点索引。
-3. `DeepCopy()` 目标 AVIF 到新 `SkyrimMod`。
-4. 只修改 change-set 声明的强类型字段。
-5. 由 `Mutagen.Bethesda.Skyrim` 写到隔离临时目录中的同名 `.esp`。
-6. Mutagen 重新打开临时补丁，逐节点比较 PERK、FNAM、坐标、技能和连接。
-7. 仅在比较成功后移动为最终新文件；拒绝覆盖现有输出。
-8. 重算源 SHA，确保源文件未变化。
+1. 编排器先用完整 `plugins.txt` 和 `plugin-path-map.json` 解析目标 AVIF 覆盖链，
+   只有最后一项的物理路径等于 `--base` 才生成 `winner-proof.json` 并继续。
+2. 用 `SkyrimMod.CreateFromBinaryOverlay` 只读打开已验证 winner。
+3. 校验 SHA、文件名、target AVIF 和节点索引。
+4. `DeepCopy()` 目标 AVIF 到新 `SkyrimMod`。
+5. 只修改 change-set 声明的强类型字段。
+6. 由 `Mutagen.Bethesda.Skyrim` 写到隔离临时目录中的同名 `.esp`。
+7. Mutagen 重新打开临时补丁，逐节点比较 PERK、FNAM、坐标、技能和连接。
+8. 仅在比较成功后移动为最终新文件；拒绝覆盖现有输出。
+9. 重算源 SHA，确保源文件未变化。
 
 这不是自制 ESP writer：TES4/GRUP、record size、master index 和二进制编码均
 由 Mutagen 处理。
@@ -128,7 +137,8 @@ AVIF 时跨树合并。
 ## 9. 写后验证与最终确认
 
 1. `run-mutagen-write-workflow.mjs` 自动用独立 Node 解析器回读输出。
-2. 比较节点数、全部坐标、FNAM、CNAM、结构错误和批准的 change-set。
+2. 从基线 Node JSON 独立应用批准的 change-set，比较节点数、PERK、全部坐标、
+   FNAM、SNAM、CNAM，并生成 `change-set-reparse-verification.json`。
 3. 对补丁重新生成 affected-tree SVG、完整手册、机器 diff 和合并结论，交给用户。
 4. 等待用户最终确认或进一步修改；未确认时保持在 `POST_MERGE_RENDERED`。
 5. 把用户最终确认的补丁放到最终 MO2 profile，确认它是 target AVIF winner。
@@ -139,17 +149,19 @@ AVIF 时跨树合并。
 
 - 源或 change-set SHA 不符：不写。
 - winning AVIF 未证明：只读分析，不写。
+- `plugins.txt` 或 `plugin-path-map.json` 缺失：不写。
 - output 已存在或等于 source：拒绝。
 - target/node 不存在、连接重复/缺失、结果有悬空连接：拒绝。
 - Mutagen reopen 不一致：删除临时输出并失败。
 - 独立回读不一致：不进入负载顺序验证。
+- frozen context 内容/SHA 不符或两侧 context 不同：不生成合并分析。
 - `winningOverrideVerified=false`：不得描述成最终游戏值。
 - 未经首次用户确认、decision 未覆盖所有待并入节点、analysis SHA 不一致，或仍有
   `manual` 决策：不得生成/执行合并 change-set。
 - 写后图、手册与独立回读未交给用户最终确认：不得称合并完成或 runtime-verified。
 - 游戏截图缺失：不得称 runtime-verified。
 
-## 10. 公开依据
+## 11. 公开依据
 
 - Mutagen 读写文档：<https://mutagen-modding.github.io/Mutagen/>
 - Mutagen 写入 Mod 文档：<https://mutagen-modding.github.io/Mutagen/writing-mods/>

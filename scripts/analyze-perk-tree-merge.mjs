@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { canonicalSha256, sha256 } from "./lib/canonical-json.mjs";
 
 function usage() {
   console.error([
@@ -31,18 +31,6 @@ function parseArgs(argv) {
   return result;
 }
 
-function sha256(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
-
-function stable(value) {
-  if (Array.isArray(value)) return value.map(stable);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, stable(value[key])]));
-  }
-  return value;
-}
-
 function normalize(value) {
   return String(value ?? "").trim().toLocaleLowerCase().replace(/\s+/g, " ");
 }
@@ -54,7 +42,7 @@ function visibleNodes(tree) {
 function fingerprint(node) {
   const perk = node.perkResolution?.perk;
   if (!perk) return null;
-  return sha256(JSON.stringify(stable({
+  return canonicalSha256({
     editorId: normalize(perk.editorId),
     name: normalize(perk.name?.value),
     description: normalize(perk.description?.value),
@@ -62,7 +50,7 @@ function fingerprint(node) {
     nextPerk: perk.nextPerk?.formKey ?? null,
     acquisitionConditions: perk.acquisitionConditions ?? [],
     effects: perk.effects ?? []
-  })));
+  });
 }
 
 function nodeSummary(node) {
@@ -183,6 +171,7 @@ function markdown(analysis, svgPath) {
     "# 双 Mod 技能树合并评审", "",
     `> 基树：\`${analysis.base.source}\`（源 SHA-256：\`${analysis.base.sourceSha256}\`）`,
     `> 待并入树：\`${analysis.incoming.source}\`（源 SHA-256：\`${analysis.incoming.sourceSha256}\`）`,
+    `> 冻结环境：\`${analysis.frozenContextSha256}\`（load order、plugin map、语言、物理插件路径与 SHA 一致）`,
     `> 此报告 SHA-256：\`${analysis.analysisSha256}\`。它是只读提案，不产生 ESP，也不是用户批准。`, "",
     "## 图例与决策边界", "",
     `![合并评审图](${path.basename(svgPath)})`, "",
@@ -198,7 +187,7 @@ function markdown(analysis, svgPath) {
   for (const [status, count] of Object.entries(analysis.summary.byStatus)) lines.push(`| ${status} | ${count} | ${analysis.summary.defaultByStatus[status]} |`);
   lines.push("", "## 逐项分析", "");
   for (const tree of analysis.trees) {
-    lines.push(`### ${tree.displayName}（${tree.editorId}）`, "");
+    lines.push(`### ${tree.displayName}（${tree.editorId} / ${tree.formKey}）`, "");
     if (!tree.base || !tree.incoming) {
       lines.push(`- 状态：${tree.base ? "仅基树存在" : "仅待并入树存在"}。不同 AVIF 不能在本工作流中自动拼接；需用户指定目标 AVIF 和新增树策略。`, "");
       continue;
@@ -221,12 +210,46 @@ if (!args.baseDetails || !args.incomingDetails || !args.output) usage();
 const basePath = path.resolve(args.baseDetails); const incomingPath = path.resolve(args.incomingDetails); const output = path.resolve(args.output);
 for (const filePath of [basePath, incomingPath]) if (!fs.existsSync(filePath)) throw new Error(`Details file does not exist: ${filePath}`);
 const base = JSON.parse(fs.readFileSync(basePath, "utf8")); const incoming = JSON.parse(fs.readFileSync(incomingPath, "utf8"));
+function validateDetails(details, label) {
+  if (details.schemaVersion !== 2) throw new Error(`${label} details must use schemaVersion 2 with stable AVIF FormKeys`);
+  if (details.resolution?.mode !== "explicit-load-order-complete" || details.resolution?.perkWinningOverridesVerified !== true) {
+    throw new Error(`${label} details do not have complete load-order PERK winner evidence`);
+  }
+  if ((details.resolution.pluginFailures ?? []).length > 0) throw new Error(`${label} details contain plugin resolution failures`);
+  if (!/^[0-9a-f]{64}$/.test(details.resolution?.frozenContextSha256 ?? "")) throw new Error(`${label} details have no frozen-context SHA-256`);
+  if (!/^[0-9a-f]{64}$/.test(details.resolution?.loadOrderSha256 ?? "") || !/^[0-9a-f]{64}$/.test(details.resolution?.pluginMapSha256 ?? "")) {
+    throw new Error(`${label} details must bind both plugins.txt and plugin-path-map.json`);
+  }
+  const context = details.resolution.frozenContext;
+  if (!context || canonicalSha256(context) !== details.resolution.frozenContextSha256) {
+    throw new Error(`${label} frozen-context content does not match its SHA-256`);
+  }
+  if (context.loadOrderSha256 !== details.resolution.loadOrderSha256 || context.pluginMapSha256 !== details.resolution.pluginMapSha256 || context.language !== details.resolution.language) {
+    throw new Error(`${label} frozen-context fields disagree with resolution metadata`);
+  }
+}
+validateDetails(base, "base"); validateDetails(incoming, "incoming");
+if (base.resolution.frozenContextSha256 !== incoming.resolution.frozenContextSha256) {
+  throw new Error(`Frozen analysis contexts differ: ${base.resolution.frozenContextSha256} != ${incoming.resolution.frozenContextSha256}`);
+}
 const baseLabel = args.baseLabel ?? path.basename(base.source ?? basePath); const incomingLabel = args.incomingLabel ?? path.basename(incoming.source ?? incomingPath);
-const baseByEditorId = new Map((base.trees ?? []).map((tree) => [tree.editorId, tree]));
-const incomingByEditorId = new Map((incoming.trees ?? []).map((tree) => [tree.editorId, tree]));
+function indexTrees(details, label) {
+  const result = new Map();
+  for (const tree of details.trees ?? []) {
+    if (!tree.formKey || !/^.+\|[0-9a-f]{8}$/i.test(tree.formKey)) throw new Error(`${label} tree ${tree.editorId ?? "(no EDID)"} has no stable AVIF FormKey`);
+    const key = normalize(tree.formKey);
+    if (result.has(key)) throw new Error(`${label} contains duplicate AVIF FormKey ${tree.formKey}`);
+    result.set(key, tree);
+  }
+  return result;
+}
+const baseByFormKey = indexTrees(base, "base");
+const incomingByFormKey = indexTrees(incoming, "incoming");
 const trees = [];
-for (const editorId of new Set([...baseByEditorId.keys(), ...incomingByEditorId.keys()])) {
-  const baseTree = baseByEditorId.get(editorId); const incomingTree = incomingByEditorId.get(editorId);
+for (const formKeyKey of new Set([...baseByFormKey.keys(), ...incomingByFormKey.keys()])) {
+  const baseTree = baseByFormKey.get(formKeyKey); const incomingTree = incomingByFormKey.get(formKeyKey);
+  const formKey = baseTree?.formKey ?? incomingTree?.formKey;
+  const editorId = baseTree?.editorId ?? incomingTree?.editorId ?? "";
   const baseNodes = baseTree ? visibleNodes(baseTree).map(nodeSummary) : [];
   const incomingNodes = incomingTree ? visibleNodes(incomingTree).map(nodeSummary) : [];
   const items = incomingNodes.map((source) => {
@@ -241,19 +264,20 @@ for (const editorId of new Set([...baseByEditorId.keys(), ...incomingByEditorId.
     const decision = classify(selected, source);
     return { incoming: source, base: selected, nearestBase: nearby ? { treeIndex: nearby.node.treeIndex, distance: nearby.distance } : null, ...decision };
   });
-  trees.push({ editorId, displayName: baseTree?.displayName ?? incomingTree?.displayName ?? editorId, base: baseTree ? { nodes: baseNodes } : null, incoming: incomingTree ? { nodes: incomingNodes } : null, items });
+  trees.push({ formKey, editorId, displayName: baseTree?.displayName ?? incomingTree?.displayName ?? (editorId || formKey), base: baseTree ? { nodes: baseNodes } : null, incoming: incomingTree ? { nodes: incomingNodes } : null, items });
 }
 const allItems = trees.flatMap((tree) => tree.items);
 const byStatus = Object.fromEntries([...new Set(allItems.map((item) => item.status))].sort().map((status) => [status, allItems.filter((item) => item.status === status).length]));
 const analysis = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
+  frozenContextSha256: base.resolution.frozenContextSha256,
   base: { details: basePath, detailsSha256: sha256(fs.readFileSync(basePath)), source: base.source, sourceSha256: base.sourceSha256, label: baseLabel, resolution: base.resolution ?? null },
   incoming: { details: incomingPath, detailsSha256: sha256(fs.readFileSync(incomingPath)), source: incoming.source, sourceSha256: incoming.sourceSha256, label: incomingLabel, resolution: incoming.resolution ?? null },
   summary: { matchedTrees: trees.filter((tree) => tree.base && tree.incoming).length, baseOnlyTrees: trees.filter((tree) => tree.base && !tree.incoming).length, incomingOnlyTrees: trees.filter((tree) => !tree.base && tree.incoming).length, incomingVisibleNodes: allItems.length, byStatus, defaultByStatus: Object.fromEntries(allItems.map((item) => [item.status, item.defaultDecision])) },
   trees
 };
-analysis.analysisSha256 = sha256(JSON.stringify(stable({ ...analysis, generatedAt: null })));
+analysis.analysisSha256 = canonicalSha256({ ...analysis, analysisSha256: undefined, generatedAt: null });
 fs.mkdirSync(output, { recursive: true });
 const jsonPath = path.join(output, "perk-tree-merge-analysis.json"); const svgPath = path.join(output, "perk-tree-merge-analysis.svg"); const mdPath = path.join(output, "perk-tree-merge-analysis.md");
 fs.writeFileSync(jsonPath, `${JSON.stringify(analysis, null, 2)}\n`);

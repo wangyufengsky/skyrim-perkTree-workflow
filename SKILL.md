@@ -66,6 +66,8 @@ node scripts/run-readonly-workflow.mjs \
 Inspect `manifest.json`, `perk-tree-nodes.json`, `perk-tree-details.json`, the
 overview SVG, and every tree SVG. Report geometry errors separately from missing
 PERKs, strings, referenced records, VMAD, and unmapped CTDA functions.
+Every tree must carry a stable AVIF FormKey. Source-plugin self slots resolve to
+the source filename; an unresolved AVIF record slot is a validation failure.
 
 Generate the complete Markdown manual with:
 
@@ -92,6 +94,11 @@ node scripts/analyze-perk-tree-merge.mjs \
   --output "/absolute/path/to/merge-review"
 ```
 
+The analyzer requires schema-version-2 details, recomputes each frozen-context
+fingerprint, and rejects different load-order, plugin-map, language, root, or
+resolved-plugin-path/SHA evidence. Trees are paired only by stable AVIF FormKey,
+never by EDID or display name.
+
 Deliver `perk-tree-merge-analysis.svg`, `.md`, and `.json` to the user. The
 analysis calls out exact FormKey duplicates (do not import), evidence-identical
 but different FormKey candidates (review), EDID/name conflicts (manual), unique
@@ -108,6 +115,11 @@ node scripts/validate-merge-decision.mjs \
   --analysis "/absolute/path/to/merge-review/perk-tree-merge-analysis.json" \
   --decision "/absolute/path/to/merge-decision.json"
 ```
+
+Decision schema version 2 identifies each item with `treeFormKey` plus
+`incomingIndex`. Validation recomputes the canonical analysis hash. Imports of
+exact duplicates, semantic conflicts, unresolved items, or unmatched target
+trees are rejected; unmatched trees need a separately reviewed target mapping.
 
 Do not write if the decision is incomplete, contains a `manual` item, or names
 a different report hash. Generate an exact, new-output-only change-set only
@@ -143,6 +155,10 @@ The workflow hashes the base before and after, invokes the pinned Mutagen writer
 creates only a new output, reopens and structurally compares it with Mutagen,
 then reruns the independent parser and validator. If any stage fails, do not
 claim an editable patch exists.
+Before Mutagen starts it writes `winner-proof.json`, proving the active target
+AVIF override chain ends at the exact physical `--base` path. Afterward,
+`change-set-reparse-verification.json` independently applies the change-set to
+the parsed baseline and compares PERK, FNAM, coordinates, skill, and every CNAM.
 
 Afterward, confirm the patch wins in the final profile, optionally run SSEEdit
 `Check for Errors`, and capture each affected tree in game before calling it

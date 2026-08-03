@@ -1,6 +1,6 @@
 {
   "package": "skyrim-perk-tree-workflow",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "runtime": {
     "node": ">=18",
     "dotnetForWriting": ">=9.0",
@@ -10,19 +10,21 @@
     "read-only TES4/GRUP/AVIF/PERK parsing",
     "compressed record inflation",
     "AVIF node, coordinate, parent flag, and connection extraction",
+    "stable AVIF and PERK FormKeys including source-plugin self slots",
     "PERK names, descriptions, ranks, next-perk, CTDA, effects, and referenced records",
     "localized STRINGS, DLSTRINGS, and ILSTRINGS lookup",
-    "explicit plugins.txt and plugin-path-map winner analysis",
+    "explicit plugins.txt and plugin-path-map winner analysis with frozen-context fingerprints",
+    "pre-write target AVIF override-chain and physical winner proof",
     "SVG overview and per-tree rendering",
     "complete per-visible-node Markdown manual generation",
     "two-plugin AVIF/PERK merge assessment with SVG and Markdown evidence",
     "stable-FormKey duplicate, evidence-equivalence, semantic-conflict, and unresolved-item classification",
-    "analysis-hash-bound, complete user-decision validation before change-set generation",
+    "canonical analysis-hash-bound decisions with status-specific action gates",
     "post-write re-render and user-final-confirmation gate",
     "cross-platform Mutagen AVIF patch writing",
     "new-output-only and source SHA-256 safety gates",
     "Mutagen reopen structural comparison",
-    "independent post-write Node reparse and graph validation",
+    "independent post-write Node reparse with field-by-field change-set reconciliation",
     "locked NuGet dependency graph"
   ],
   "externalRequired": [

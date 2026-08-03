@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["version", "analysisSha256", "approved", "decisions"],
   "properties": {
-    "version": { "const": 1 },
+    "version": { "const": 2 },
     "analysisSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "approved": { "const": true },
     "comment": { "type": "string" },
@@ -16,8 +16,9 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["treeEditorId", "incomingIndex", "action"],
+        "required": ["treeFormKey", "incomingIndex", "action"],
         "properties": {
+          "treeFormKey": { "$ref": "#/$defs/formKey" },
           "treeEditorId": { "type": "string", "minLength": 1 },
           "incomingIndex": { "type": "integer", "minimum": 1, "maximum": 65535 },
           "action": { "enum": ["keep-base", "import", "exclude", "manual"] },
@@ -25,5 +26,8 @@
         }
       }
     }
+  },
+  "$defs": {
+    "formKey": { "type": "string", "pattern": "^.+\\|[0-9A-Fa-f]{8}$" }
   }
 }

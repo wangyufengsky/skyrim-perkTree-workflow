@@ -106,7 +106,7 @@ for (const tree of document.trees ?? []) {
   const acquisition = visible.reduce((sum, node) => sum + (node.perkResolution?.perk?.acquisitionConditions?.length ?? 0), 0);
   const effects = visible.flatMap(node => node.perkResolution?.perk?.effects ?? []);
   const effectConditions = effects.reduce((sum, effect) => sum + (effect.conditions?.length ?? 0), 0);
-  lines.push(`| ${text(tree.displayName)} | ${tree.editorId} / ${tree.formId} | ${visible.length} | ${resolved} | ${visible.length - resolved} | ${acquisition} | ${effectConditions} |`);
+  lines.push(`| ${text(tree.displayName)} | ${tree.editorId} / ${tree.formKey ?? tree.formId} | ${visible.length} | ${resolved} | ${visible.length - resolved} | ${acquisition} | ${effectConditions} |`);
 }
 lines.push("");
 
@@ -117,7 +117,7 @@ for (const [treePosition, tree] of (document.trees ?? []).entries()) {
   const resolvedCount = visibleNodes.filter(node => node.perkResolution?.perk).length;
   lines.push(`## ${treePosition + 1}. ${heading(tree.displayName)}（${tree.editorId}）`, "");
   lines.push(
-    `- AVIF：\`${tree.formId}\`；可见技能点 ${visibleNodes.length}；已解析 ${resolvedCount}；未解析 ${visibleNodes.length - resolvedCount}。`,
+    `- AVIF：\`${tree.formKey ?? tree.formId}\`（原始 FormID ${tree.formId}）；source winner：${tree.avifResolution?.winningOverrideVerified ? "已验证" : "未验证"}；可见技能点 ${visibleNodes.length}；已解析 ${resolvedCount}；未解析 ${visibleNodes.length - resolvedCount}。`,
     `- 虚拟根节点：INAM ${root?.index ?? "无"}，连接到 [${root?.connections?.join(", ") || "无"}]。`,
     `- 网格范围：X 0…${tree.maxGridX ?? "?"}；结构校验：重复索引 ${tree.validation?.duplicateIndices?.length ?? "?"}、悬空连接 ${tree.validation?.danglingConnections?.length ?? "?"}、环 ${tree.validation?.hasCycle ? "有" : "无"}。`,
     ""

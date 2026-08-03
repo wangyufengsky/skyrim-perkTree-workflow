@@ -20,6 +20,9 @@ writer 只为一个已批准的 AVIF change-set 创建新补丁 ESP。它不修�
 4. `targetAvif` 是稳定 FormKey。
 5. `outputPlugin` 等于 `--output` 文件名；输出必须是不存的新 `.esp`。
 6. change-set schema 版本必须为 2，至少一个操作。
+7. 编排器必须在启动 writer 前读取完整 `plugins.txt` 与
+   `plugin-path-map.json`，解析 target AVIF 的活动覆盖链，并生成内容带 SHA 的
+   `winner-proof.json`；最后 winner 的物理路径必须等于 `--base`。
 
 ## 写入语义
 
@@ -46,6 +49,9 @@ writer 必须用 Mutagen 重新打开临时输出，并验证：
 
 全部通过后才移动到最终新路径，并返回 source/output SHA、Mutagen 版本、
 目标 AVIF、操作数、节点数和连接数。编排器随后再用独立 Node 解析器回读。
+独立回读必须从解析后的基线应用 change-set，再逐节点比较 PERK、FNAM、坐标、
+Associated Skill 和 CNAM，生成 `change-set-reparse-verification.json`；仅做图结构
+校验不足以达到 L4。
 
 ## 不成立的结论
 

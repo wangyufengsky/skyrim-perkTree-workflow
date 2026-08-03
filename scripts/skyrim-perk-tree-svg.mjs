@@ -182,7 +182,28 @@ function walkFiles(directory, result = []) {
   return result;
 }
 
-function buildPerkNameIndex(masterNames) {
+function resolveFormKey(rawFormId, masters, sourcePluginName) {
+  if (rawFormId === 0) {
+    return { plugin: null, localFormId: 0, formKey: null, unresolvedSlot: false };
+  }
+  const slot = rawFormId >>> 24;
+  const localFormId = rawFormId & 0x00ffffff;
+  const plugin = slot < masters.length
+    ? masters[slot]
+    : slot === masters.length
+      ? sourcePluginName
+      : null;
+  return {
+    plugin,
+    localFormId,
+    formKey: plugin
+      ? `${plugin}|${localFormId.toString(16).padStart(8, "0").toUpperCase()}`
+      : null,
+    unresolvedSlot: plugin === null,
+  };
+}
+
+function buildPerkNameIndex(pluginNames) {
   const candidatesByName = new Map();
 
   const candidateFiles = [
@@ -191,7 +212,7 @@ function buildPerkNameIndex(masterNames) {
 
   for (const candidate of candidateFiles) {
     const baseName = path.basename(candidate);
-    if (!masterNames.includes(baseName)) {
+    if (!pluginNames.includes(baseName)) {
       continue;
     }
     if (!candidatesByName.has(baseName)) {
@@ -202,8 +223,8 @@ function buildPerkNameIndex(masterNames) {
 
   const result = new Map();
 
-  for (const masterName of masterNames) {
-    const candidates = candidatesByName.get(masterName) ?? [];
+  for (const pluginName of pluginNames) {
+    const candidates = candidatesByName.get(pluginName) ?? [];
     const namesByLocalId = new Map();
 
     for (const candidate of candidates) {
@@ -236,13 +257,13 @@ function buildPerkNameIndex(masterNames) {
         stableNames.set(localId, [...names][0]);
       }
     }
-    result.set(masterName, stableNames);
+    result.set(pluginName, stableNames);
   }
 
   return result;
 }
 
-function parseSkillTrees(records, masters, perkNameIndex) {
+function parseSkillTrees(records, masters, sourcePluginName, perkNameIndex) {
   const trees = [];
 
   for (const record of records.filter((item) => item.signature === "AVIF")) {
@@ -256,10 +277,9 @@ function parseSkillTrees(records, masters, perkNameIndex) {
       if (signature === "PNAM") {
         const rawFormId = data.readUInt32LE(0);
         const masterSlot = rawFormId >>> 24;
-        const localFormId = rawFormId & 0x00ffffff;
-        const master = rawFormId === 0
-          ? null
-          : (masters[masterSlot] ?? `SELF_OR_UNKNOWN_SLOT_${masterSlot}`);
+        const resolved = resolveFormKey(rawFormId, masters, sourcePluginName);
+        const localFormId = resolved.localFormId;
+        const master = resolved.plugin;
         const resolvedEditorId = master
           ? perkNameIndex.get(master)?.get(localFormId)
           : null;
@@ -269,9 +289,8 @@ function parseSkillTrees(records, masters, perkNameIndex) {
           masterSlot,
           master,
           localFormId,
-          formKey: rawFormId === 0
-            ? "NULL"
-            : `${master}|${localFormId.toString(16).padStart(8, "0").toUpperCase()}`,
+          formKey: rawFormId === 0 ? "NULL" : resolved.formKey,
+          unresolvedSlot: resolved.unresolvedSlot,
           perkEditorId: resolvedEditorId ?? null,
           parentRequired: null,
           gridX: null,
@@ -331,10 +350,13 @@ function parseSkillTrees(records, masters, perkNameIndex) {
         .map((target) => ({ from: node.index, to: target })),
     );
 
+    const treeFormKey = resolveFormKey(record.formId, masters, sourcePluginName);
     trees.push({
       editorId,
       displayName: TREE_NAMES[editorId] ?? editorId,
       formId: record.formId,
+      formKey: treeFormKey.formKey,
+      unresolvedFormIdSlot: treeFormKey.unresolvedSlot,
       nodes,
       root,
       visibleNodes,
@@ -702,8 +724,8 @@ const sourceHash = crypto.createHash("sha256").update(sourceBuffer).digest("hex"
 const sourceName = path.basename(inputPath);
 const records = parseRecords(sourceBuffer);
 const masters = getMasters(records);
-const perkNameIndex = buildPerkNameIndex(masters);
-const trees = parseSkillTrees(records, masters, perkNameIndex);
+const perkNameIndex = buildPerkNameIndex([...new Set([...masters, sourceName])]);
+const trees = parseSkillTrees(records, masters, sourceName, perkNameIndex);
 
 if (trees.length === 0) {
   throw new Error("No AVIF records with perk trees were found");
@@ -723,7 +745,7 @@ for (const tree of trees) {
 
 const nodesPath = path.join(outputDirectory, "perk-tree-nodes.json");
 const nodeExport = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   source: inputPath,
   sourceSha256: sourceHash,
   generatedAt: new Date().toISOString(),
@@ -732,12 +754,15 @@ const nodeExport = {
     editorId: tree.editorId,
     displayName: tree.displayName,
     formId: `0x${tree.formId.toString(16).padStart(8, "0").toUpperCase()}`,
+    formKey: tree.formKey,
+    unresolvedFormIdSlot: tree.unresolvedFormIdSlot,
     maxGridX: tree.maxGridX,
     nodes: tree.nodes.map((node) => ({
       index: node.index,
       invisibleRoot: node === tree.root,
       perkFormKey: node.formKey,
       perkEditorId: node.perkEditorId,
+      unresolvedFormIdSlot: node.unresolvedSlot,
       parentRequired: node.parentRequired,
       associatedSkill: node.associatedSkill,
       gridX: node.gridX,
@@ -767,6 +792,8 @@ const manifest = {
     editorId: tree.editorId,
     displayName: tree.displayName,
     formId: `0x${tree.formId.toString(16).padStart(8, "0").toUpperCase()}`,
+    formKey: tree.formKey,
+    unresolvedFormIdSlot: tree.unresolvedFormIdSlot,
     visibleNodes: tree.visibleNodes.length,
     allConnections: tree.allConnections.length,
     visibleConnections: tree.visibleConnections.length,

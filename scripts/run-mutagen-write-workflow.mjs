@@ -56,12 +56,19 @@ function sha256(filePath) {
 
 const args = parseArgs(process.argv.slice(2));
 if (!args.base || !args.changeSet || !args.output) usage();
+if (!args.pluginMap || !args.loadOrder) {
+  throw new Error("--plugin-map and --load-order are required to prove the winning AVIF before writing.");
+}
 
 const basePath = path.resolve(args.base);
 const changeSetPath = path.resolve(args.changeSet);
 const outputPath = path.resolve(args.output);
 const verificationOutput = path.resolve(args.verificationOutput ?? `${outputPath}.verification`);
 const reportPath = `${outputPath}.writer-report.json`;
+const winnerProofPath = path.join(verificationOutput, "winner-proof.json");
+const baselineOutput = path.join(verificationOutput, "base");
+const patchOutput = path.join(verificationOutput, "patch");
+const reparseProofPath = path.join(verificationOutput, "change-set-reparse-verification.json");
 for (const requiredPath of [basePath, changeSetPath]) {
   if (!fs.existsSync(requiredPath) || !fs.statSync(requiredPath).isFile()) {
     throw new Error(`Required input is not a file: ${requiredPath}`);
@@ -74,7 +81,35 @@ if (fs.existsSync(reportPath)) throw new Error(`Writer report already exists: ${
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectPath = path.resolve(scriptDirectory, "../writer/SkyrimPerkTreeWriter/SkyrimPerkTreeWriter.csproj");
 const readonlyWorkflow = path.join(scriptDirectory, "run-readonly-workflow.mjs");
+const winnerVerifier = path.join(scriptDirectory, "verify-avif-winner.mjs");
+const reparseVerifier = path.join(scriptDirectory, "verify-change-set-reparse.mjs");
 const baseHashBefore = sha256(basePath);
+const changeSet = JSON.parse(fs.readFileSync(changeSetPath, "utf8"));
+if (changeSet.baseSha256 !== baseHashBefore) {
+  throw new Error(`Change-set base SHA-256 does not match --base: ${changeSet.baseSha256} != ${baseHashBefore}`);
+}
+if (String(changeSet.basePlugin).toLowerCase() !== path.basename(basePath).toLowerCase()) {
+  throw new Error(`Change-set basePlugin ${changeSet.basePlugin} does not name --base ${path.basename(basePath)}`);
+}
+
+const profileArguments = [];
+for (const root of args.masterRoots) profileArguments.push("--master-root", path.resolve(root));
+profileArguments.push("--plugin-map", path.resolve(args.pluginMap), "--load-order", path.resolve(args.loadOrder));
+
+run(process.execPath, [
+  winnerVerifier,
+  "--base", basePath,
+  "--target-avif", changeSet.targetAvif,
+  "--expected-winner", changeSet.expectedWinnerPlugin,
+  "--plugin-map", path.resolve(args.pluginMap),
+  "--load-order", path.resolve(args.loadOrder),
+  "--output", winnerProofPath,
+  ...args.masterRoots.flatMap((root) => ["--master-root", path.resolve(root)])
+]);
+
+const baselineArguments = [readonlyWorkflow, "--input", basePath, "--output", baselineOutput, "--expected-sha256", baseHashBefore, ...profileArguments];
+if (args.language) baselineArguments.push("--language", args.language);
+run(process.execPath, baselineArguments);
 
 run(args.dotnet ?? "dotnet", [
   "run",
@@ -107,7 +142,7 @@ const verificationArgs = [
   "--input",
   outputPath,
   "--output",
-  verificationOutput,
+  patchOutput,
   "--expected-sha256",
   writerReport.outputSha256
 ];
@@ -116,6 +151,13 @@ if (args.pluginMap) verificationArgs.push("--plugin-map", path.resolve(args.plug
 if (args.loadOrder) verificationArgs.push("--load-order", path.resolve(args.loadOrder));
 if (args.language) verificationArgs.push("--language", args.language);
 run(process.execPath, verificationArgs);
+run(process.execPath, [
+  reparseVerifier,
+  "--base-nodes", path.join(baselineOutput, "perk-tree-nodes.json"),
+  "--output-nodes", path.join(patchOutput, "perk-tree-nodes.json"),
+  "--change-set", changeSetPath,
+  "--output", reparseProofPath
+]);
 
 console.log(JSON.stringify({
   status: "ok",
@@ -125,5 +167,7 @@ console.log(JSON.stringify({
   output: outputPath,
   outputSha256: writerReport.outputSha256,
   report: reportPath,
-  verification: verificationOutput
+  winnerProof: winnerProofPath,
+  verification: verificationOutput,
+  reparseProof: reparseProofPath
 }, null, 2));

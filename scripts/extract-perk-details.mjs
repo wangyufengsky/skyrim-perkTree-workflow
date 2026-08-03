@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
+import { canonicalSha256 } from "./lib/canonical-json.mjs";
 
 // Verified against xEdit's TES5 wbCTDAFunctions table. Unknown IDs remain numeric
 // and are deliberately not guessed.
@@ -845,6 +846,10 @@ const targetFormKeys = new Set(
   ),
 );
 const overrideChains = new Map([...targetFormKeys].map((formKey) => [formKey, []]));
+const targetAvifFormKeys = new Set(
+  nodeExport.trees.map((tree) => tree.formKey).filter(Boolean),
+);
+const avifOverrideChains = new Map([...targetAvifFormKeys].map((formKey) => [formKey, []]));
 
 if (loadOrder) {
   for (const pluginName of loadOrder) {
@@ -862,6 +867,12 @@ if (loadOrder) {
         record,
         perk: parsePerkRecord(record, plugin, resolved.formKey)
       });
+    }
+    for (const record of plugin.records.filter((item) => item.signature === "AVIF")) {
+      const resolved = resolveRawFormId(record.formId, plugin);
+      if (resolved?.formKey && targetAvifFormKeys.has(resolved.formKey)) {
+        avifOverrideChains.get(resolved.formKey).push({ plugin, record });
+      }
     }
   }
 } else {
@@ -905,6 +916,23 @@ const loadOrderComplete = Boolean(loadOrder)
   && missingSourceMastersInLoadOrder.length === 0
   && pluginFailures.length === 0;
 
+const resolvedPlugins = (loadOrder ?? []).map((pluginName) => {
+  const plugin = getPlugin(pluginName);
+  return plugin
+    ? { name: plugin.name, path: plugin.path, sha256: plugin.sha256, pathResolution: plugin.pathResolution.status }
+    : { name: pluginName, path: null, sha256: null, pathResolution: "unresolved" };
+});
+const frozenContext = loadOrderComplete
+  ? {
+      loadOrderSha256: sha256(args.loadOrder),
+      pluginMapSha256: args.pluginMap ? sha256(args.pluginMap) : null,
+      pluginRoots: [...args.pluginRoots].sort(),
+      language: args.language,
+      resolvedPlugins
+    }
+  : null;
+const frozenContextSha256 = frozenContext ? canonicalSha256(frozenContext) : null;
+
 let resolvedPerks = 0;
 let namedPerks = 0;
 let describedPerks = 0;
@@ -920,6 +948,34 @@ const detailedTrees = nodeExport.trees.map((tree) => ({
   editorId: tree.editorId,
   displayName: tree.displayName,
   formId: tree.formId,
+  formKey: tree.formKey,
+  unresolvedFormIdSlot: Boolean(tree.unresolvedFormIdSlot),
+  avifResolution: (() => {
+    const chain = avifOverrideChains.get(tree.formKey) ?? [];
+    const winner = chain.at(-1) ?? null;
+    const winningOverrideVerified = Boolean(
+      loadOrderComplete
+      && winner
+      && path.resolve(winner.plugin.path) === path.resolve(nodeExport.source),
+    );
+    return {
+      status: !loadOrderComplete
+        ? "unverified-load-order"
+        : winner
+          ? winningOverrideVerified ? "source-is-winning-override" : "source-is-not-winning-override"
+          : "target-avif-unresolved",
+      winningOverrideVerified,
+      overrideChain: chain.map((entry) => ({
+        plugin: entry.plugin.name,
+        path: entry.plugin.path,
+        sha256: entry.plugin.sha256,
+        rawFormId: `0x${entry.record.formId.toString(16).padStart(8, "0").toUpperCase()}`
+      })),
+      winner: winner
+        ? { plugin: winner.plugin.name, path: winner.plugin.path, sha256: winner.plugin.sha256 }
+        : null
+    };
+  })(),
   maxGridX: tree.maxGridX,
   validation: tree.validation,
   nodes: tree.nodes.map((node) => {
@@ -1077,9 +1133,13 @@ while (referenceQueue.length > 0 && Object.keys(referencedRecords).length < 5000
 const resolvedReferencedRecords = Object.values(referencedRecords)
   .filter((item) => item.record !== null)
   .length;
+const avifWinnersVerified = detailedTrees.filter((tree) => tree.avifResolution.winningOverrideVerified).length;
+const allSourceAvifWinnersVerified = loadOrderComplete
+  && detailedTrees.length > 0
+  && avifWinnersVerified === detailedTrees.length;
 
 const result = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
   source: nodeExport.source,
   sourceSha256: nodeExport.sourceSha256,
@@ -1094,12 +1154,18 @@ const result = {
     loadOrder,
     pluginMapFile: args.pluginMap ?? null,
     pluginMapSha256: args.pluginMap ? sha256(args.pluginMap) : null,
-    pluginRoots: roots,
+    pluginRoots: args.pluginRoots,
+    sourceDirectory: path.dirname(nodeExport.source),
     language: args.language,
     sourcePluginPresent,
     missingSourceMastersInLoadOrder,
-    winningOverrideVerified: loadOrderComplete,
-    pluginFailures
+    winningOverrideVerified: allSourceAvifWinnersVerified,
+    perkWinningOverridesVerified: loadOrderComplete,
+    avifWinnersVerified,
+    pluginFailures,
+    resolvedPlugins,
+    frozenContext,
+    frozenContextSha256
   },
   summary: {
     trees: detailedTrees.length,
@@ -1114,6 +1180,7 @@ const result = {
     unmappedConditions: unmappedConditionCount,
     effects: effectCount,
     winningOverridesVerified,
+    avifWinnersVerified,
     referencedRecords: Object.keys(referencedRecords).length,
     resolvedReferencedRecords,
     unresolvedReferencedRecords: Object.keys(referencedRecords).length - resolvedReferencedRecords
