@@ -58,6 +58,9 @@
           },
           {
             "$ref": "#/$defs/removeNode"
+          },
+          {
+            "$ref": "#/$defs/addNode"
           }
         ]
       }
@@ -183,6 +186,30 @@
         "nodeIndex": {
           "$ref": "#/$defs/nodeIndex"
         }
+      }
+    },
+    "addNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "nodeIndex",
+        "perkFormKey",
+        "required",
+        "xnam",
+        "ynam",
+        "hnam",
+        "vnam"
+      ],
+      "properties": {
+        "op": { "const": "addNode" },
+        "nodeIndex": { "$ref": "#/$defs/nodeIndex" },
+        "perkFormKey": { "$ref": "#/$defs/formKey" },
+        "required": { "type": "boolean" },
+        "xnam": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "ynam": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "hnam": { "type": "number" },
+        "vnam": { "type": "number" }
       }
     }
   }

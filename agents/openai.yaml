@@ -1,4 +1,4 @@
 interface:
   display_name: "Skyrim Perk Tree Workflow"
   short_description: "Inspect, document, and safely patch Skyrim perk trees with Mutagen"
-  default_prompt: "Use $skyrim-perk-tree-workflow to parse this Skyrim plugin's AVIF trees, resolve every node's PERK details and prerequisites, produce JSON/SVG/Markdown evidence, and use the cross-platform Mutagen writer only after an approved change-set."
+  default_prompt: "Use $skyrim-perk-tree-workflow to parse Skyrim AVIF trees, resolve PERK details and prerequisites, and produce JSON/SVG/Markdown evidence. For two-mod merges, first produce a duplicate/conflict/import-candidate review with SVG and detailed Markdown, wait for itemized user approval, then write only a new Mutagen patch; reparse, rerender, and wait for final user confirmation."

@@ -31,9 +31,11 @@ rank、Next Perk、获取条件和效果位于 `PERK`，不可从几何推断。
 ## 3. 状态机
 
 ```text
-CREATED -> PROFILE_FROZEN -> WINNER_RESOLVED -> BASELINE_PARSED
--> BASELINE_VALIDATED -> CHANGESET_PROPOSED -> VISUAL_APPROVED
+CREATED -> PROFILE_FROZEN -> WINNERS_RESOLVED -> TWO_BASELINES_PARSED
+-> TWO_BASELINES_VALIDATED -> MERGE_ANALYSIS_RENDERED -> USER_REVIEWED
+-> DECISION_HASH_VALIDATED -> CHANGESET_PROPOSED -> CHANGESET_APPROVED
 -> MUTAGEN_PATCH_WRITTEN -> MUTAGEN_REOPENED -> PATCH_REPARSED
+-> POST_MERGE_RENDERED -> USER_FINAL_CONFIRMED
 -> LOAD_ORDER_VALIDATED -> XEDIT_VALIDATED(optional) -> RUNTIME_VERIFIED
 ```
 
@@ -66,7 +68,26 @@ Master 缺失不否定目标插件内已有的几何，但名称、描述、条�
 
 生成器以 summary 的 visibleNodes 为闭合校验，漏一个节点即失败。
 
-## 6. 提案
+## 6. 双 Mod 合并评审与首次确认
+
+对两个待合并插件都执行第 4 节的基线步骤，并且必须使用同一个冻结的 MO2
+profile、`plugins.txt`、`plugin-path-map.json` 和 master 路径。分别保留：原始
+SVG、每树 SVG、`perk-tree-details.json` 和完整说明。
+
+随后执行 `analyze-perk-tree-merge.mjs`。它产生合并评审 SVG、Markdown 和 JSON：
+
+- 同一稳定 `PERK FormKey` 是 `exact-duplicate`：默认保留基树，禁止重复导入；
+- FormKey 不同但所有已解析 PERK 证据指纹相同是 `equivalent-review`：仍由用户决定；
+- 同 EDID/名称而证据不同是 `semantic-conflict`：只能手工决定，禁止自动覆盖；
+- 独有/邻近节点是候选，必须逐项审查坐标、CNAM、入边、`FNAM` 与 PERK 条件；
+- 任一侧 winner 未验证、PERK 未解析或跨 AVIF 未指定目标，保持未决，禁止写入。
+
+先交付图和完整逐项分析，等待用户确认或修改。将用户确认保存为
+`merge-decision.json`，它必须列出每一个待并入节点，并绑定分析 JSON 中的
+`analysisSha256`。`validate-merge-decision.mjs` 必须通过；`manual`、遗漏、重复
+决策或 SHA 不符均失败关闭。
+
+## 7. 提案与合并写入
 
 change-set 使用 schema v2 和稳定 FormKey `Plugin.ext|00ABCDEF`。必须包含：
 
@@ -75,11 +96,20 @@ change-set 使用 schema v2 和稳定 FormKey `Plugin.ext|00ABCDEF`。必须包�
 - `targetAvif`；
 - `outputPlugin`；
 - 明确的 `moveNode`、`connect`、`disconnect`、
-  `updateParentRequired` 或 `removeNode` 操作。
+  `updateParentRequired`、`removeNode` 或 `addNode` 操作。
+
+`addNode` 只用于用户已批准的独有节点：必须声明新 INAM、stable PERK FormKey、
+XNAM/YNAM/HNAM/VNAM 和 Parent Required；源树 CNAM 必须转换为单独、明确的
+`connect` 操作。PERK FormKey 只能属于已验证 base 或它已经声明的 master，不能
+靠写入时暗中新增依赖。
 
 用户批准前提供原图、拟议图、机器 diff、受影响记录和未解析项。
 
-## 7. Mutagen 写补丁
+在通过首次确认后，由批准选择生成精确 change-set。现有 writer 的每项操作仍须
+符合 schema：不会依据名称或坐标猜测记录，不会覆盖源插件，也不会在未指定目标
+AVIF 时跨树合并。
+
+## 8. Mutagen 写补丁
 
 严格遵循 `mutagen-writer-contract.md`：
 
@@ -95,15 +125,17 @@ change-set 使用 schema v2 和稳定 FormKey `Plugin.ext|00ABCDEF`。必须包�
 这不是自制 ESP writer：TES4/GRUP、record size、master index 和二进制编码均
 由 Mutagen 处理。
 
-## 8. 写后验证
+## 9. 写后验证与最终确认
 
 1. `run-mutagen-write-workflow.mjs` 自动用独立 Node 解析器回读输出。
 2. 比较节点数、全部坐标、FNAM、CNAM、结构错误和批准的 change-set。
-3. 把新补丁放到最终 MO2 profile，确认它是 target AVIF winner。
-4. 可选：SSEEdit `Check for Errors` 并保存报告。
-5. 进游戏逐棵受影响技能树截图；记录补丁 SHA 和 load order。
+3. 对补丁重新生成 affected-tree SVG、完整手册、机器 diff 和合并结论，交给用户。
+4. 等待用户最终确认或进一步修改；未确认时保持在 `POST_MERGE_RENDERED`。
+5. 把用户最终确认的补丁放到最终 MO2 profile，确认它是 target AVIF winner。
+6. 可选：SSEEdit `Check for Errors` 并保存报告。
+7. 进游戏逐棵受影响技能树截图；记录补丁 SHA 和 load order。
 
-## 9. 失败关闭
+## 10. 失败关闭
 
 - 源或 change-set SHA 不符：不写。
 - winning AVIF 未证明：只读分析，不写。
@@ -112,6 +144,9 @@ change-set 使用 schema v2 和稳定 FormKey `Plugin.ext|00ABCDEF`。必须包�
 - Mutagen reopen 不一致：删除临时输出并失败。
 - 独立回读不一致：不进入负载顺序验证。
 - `winningOverrideVerified=false`：不得描述成最终游戏值。
+- 未经首次用户确认、decision 未覆盖所有待并入节点、analysis SHA 不一致，或仍有
+  `manual` 决策：不得生成/执行合并 change-set。
+- 写后图、手册与独立回读未交给用户最终确认：不得称合并完成或 runtime-verified。
 - 游戏截图缺失：不得称 runtime-verified。
 
 ## 10. 公开依据

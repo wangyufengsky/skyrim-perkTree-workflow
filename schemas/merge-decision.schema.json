@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.invalid/skyrim-perk-tree-workflow/merge-decision.schema.json",
+  "title": "Skyrim Perk Tree Merge Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "analysisSha256", "approved", "decisions"],
+  "properties": {
+    "version": { "const": 1 },
+    "analysisSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "approved": { "const": true },
+    "comment": { "type": "string" },
+    "decisions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["treeEditorId", "incomingIndex", "action"],
+        "properties": {
+          "treeEditorId": { "type": "string", "minLength": 1 },
+          "incomingIndex": { "type": "integer", "minimum": 1, "maximum": 65535 },
+          "action": { "enum": ["keep-base", "import", "exclude", "manual"] },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}

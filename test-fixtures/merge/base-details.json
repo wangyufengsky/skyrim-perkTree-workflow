@@ -1,0 +1,16 @@
+{
+  "source": "/fixtures/Base.esp",
+  "sourceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "resolution": { "mode": "explicit-load-order-complete" },
+  "trees": [
+    {
+      "editorId": "AVOneHanded",
+      "displayName": "单手",
+      "nodes": [
+        { "index": 0, "invisibleRoot": true, "connections": [1] },
+        { "index": 1, "perkFormKey": "Base.esp|00000001", "perkEditorId": "BaseSlash", "parentRequired": true, "incomingConnections": [0], "connections": [2], "logicalX": 0, "logicalY": 0, "gridX": 0, "gridY": 0, "horizontalOffset": 0, "verticalOffset": 0, "perkResolution": { "status": "winning-override-from-complete-load-order", "winningOverrideVerified": true, "perk": { "editorId": "BaseSlash", "name": { "value": "基础斩击" }, "description": { "value": "造成伤害" }, "data": { "level": 0, "numRanks": 1 }, "acquisitionConditions": [], "effects": [], "unresolved": [] } } },
+        { "index": 2, "perkFormKey": "Base.esp|00000002", "perkEditorId": "BaseGuard", "parentRequired": true, "incomingConnections": [1], "connections": [], "logicalX": 1, "logicalY": 1, "gridX": 1, "gridY": 1, "horizontalOffset": 0, "verticalOffset": 0, "perkResolution": { "status": "winning-override-from-complete-load-order", "winningOverrideVerified": true, "perk": { "editorId": "BaseGuard", "name": { "value": "基础格挡" }, "description": { "value": "格挡伤害" }, "data": { "level": 10, "numRanks": 1 }, "acquisitionConditions": [], "effects": [], "unresolved": [] } } }
+      ]
+    }
+  ]
+}
