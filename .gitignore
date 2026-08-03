@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# AgentBridge local state
+.agentbridge/
+.agentbrigde/
+
+# Other editor-local files
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local logs and temporary files
+*.log
+*.tmp
+*.temp
